@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/:/app/
+    env_file:
+      - .env
+    depends_on:
+      - evolution
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - .env
+
+  evolution:
+    image: atendai/evolution-api:v2.2.2
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_store:/evolution/store
+      - evolution_instances:/evolution/instances
+    environment:
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://tatoh_user:582275325@host.docker.internal:5433/evolution?schema=public
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/0
+      - CACHE_REDIS_PREFIX=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_TYPE=redis
+      - SERVER_URL=http://localhost:8080
+      - WEBSOCKET_ENABLED=true
+      - AUTHENTICATION_EXPOSE_IN_NAVIGATION=true
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  evolution_store:
+  evolution_instances:
+  redis_data:
